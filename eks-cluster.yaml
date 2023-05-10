@@ -1,0 +1,435 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EKS Control Plane using a VPC with two public subnets
+Parameters:
+  EKSClusterName:
+    Type: String
+    Description: Name of k8s cluster
+    Default: eks-cluster
+  NumWorkerNodes:
+    Type: Number
+    Description: Number of worker nodes to create
+    Default: 2
+  WorkerNodesInstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues:
+      - t3.medium
+    ConstraintDescription: Must be a valid EC2 instance type
+    Description: EC2 instance type for the node instances
+  KeyPairName:
+    Type: String
+    Description: Name of an existing EC2 key pair (for SSH-access to the worker node instances)
+    Default: ws-default-keypair
+  Region:
+      Type: String
+      Default: us-west-2
+      AllowedValues:
+        - us-west-2
+      Description: Region with mature local zone
+  LocalZones:
+      Type: String
+      Default: us-west-2-las-1a
+      AllowedValues:
+        - us-west-2-las-1a
+      Description: Region's mature local zone
+  NodeImageId:
+    Type: String
+    Default: "ami-0b149b4c68ab69dce"
+    Description: (Optional) Specify your own custom image ID. This value overrides any AWS Systems Manager Parameter Store value specified above.
+  NodeImageIdSSMParam:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: /aws/service/eks/optimized-ami/1.24/amazon-linux-2/recommended/image_id
+    Description: AWS Systems Manager Parametersub Store parameter of the AMI ID for the worker node instances. Change this value to match the version of Kubernetes you are using.
+Mappings:
+  VpcIpRanges:
+    Option1:
+      VPC: 10.19.0.0/16    
+      AZPublicSubnetA : 10.19.0.0/20
+      AZPublicSubnetB: 10.19.16.0/20
+      AZPrivateSubnetA: 10.19.32.0/20
+      AZPrivateSubnetB: 10.19.48.0/20
+      LZPublicSubnet: 10.19.64.0/20
+      LZPrivateSubnet: 10.19.80.0/20
+Conditions:
+  HasNodeImageId: !Not
+    - "Fn::Equals":
+      - !Ref NodeImageId
+      - ""
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !FindInMap [ VpcIpRanges, Option1, VPC ]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+  AZPublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VpcIpRanges, Option1, AZPublicSubnetA ]
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-AZPublicSubnetA"
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: !Sub "kubernetes.io/cluster/${EKSClusterName}"
+          Value: shared
+  AZPublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VpcIpRanges, Option1, AZPublicSubnetB ]
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-AZPublicSubnetB"
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: !Sub "kubernetes.io/cluster/${EKSClusterName}"
+          Value: shared
+  AZPrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VpcIpRanges, Option1, AZPrivateSubnetA ]
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-AZPrivateSubnetA"
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: !Sub "kubernetes.io/cluster/${EKSClusterName}"
+          Value: shared
+  AZPrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VpcIpRanges, Option1, AZPrivateSubnetB ]
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-AZPrivateSubnetB"
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: !Sub "kubernetes.io/cluster/${EKSClusterName}"
+          Value: shared
+  LZPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VpcIpRanges, Option1, LZPublicSubnet ]
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Ref LocalZones
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-LZPublicSubnet"
+  LZPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VpcIpRanges, Option1, LZPrivateSubnet ]
+      AvailabilityZone: !Ref LocalZones
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-LZPrivateSubnet"
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-PublicSubnets"
+  InternetGatewayRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  NatGatewayAEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      Domain: vpc
+  NatGatewayBEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      Domain: vpc
+  NatGatewayA:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayAEIP.AllocationId
+      SubnetId: !Ref AZPublicSubnetA
+  NatGatewayB:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayBEIP.AllocationId
+      SubnetId: !Ref AZPublicSubnetB
+  PrivateRouteTableA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName} Private Routes (AZ a)
+  DefaultPrivateRouteA:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+  PrivateRouteTableB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName} Private Routes (AZ b)
+  DefaultPrivateRouteB:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableB
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayB
+
+  AZPublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AZPublicSubnetA
+      RouteTableId: !Ref RouteTable
+  AZPublicSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AZPublicSubnetB
+      RouteTableId: !Ref RouteTable
+  AZPrivateSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AZPrivateSubnetA
+      RouteTableId: !Ref PrivateRouteTableA
+  AZPrivateSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AZPrivateSubnetB
+      RouteTableId: !Ref PrivateRouteTableB
+  LZPublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref LZPublicSubnet
+      RouteTableId: !Ref RouteTable
+  LZPrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref LZPrivateSubnet
+      RouteTableId: !Ref PrivateRouteTableB
+  ControlPlane:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Ref EKSClusterName
+      Version: "1.24"
+      RoleArn: !GetAtt ControlPlaneRole.Arn
+      ResourcesVpcConfig:
+        SecurityGroupIds:
+          - !Ref ControlPlaneSecurityGroup
+        SubnetIds:
+          - !Ref AZPrivateSubnetA
+          - !Ref AZPrivateSubnetB 
+  ControlPlaneRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+            Effect: Allow
+            Principal:
+              Service:
+                - eks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+  ControlPlaneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the elastic network interfaces between the control plane and the worker nodes
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ControlPlaneSecurityGroup"
+  ControlPlaneIngressFromWorkerNodesHttps:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow incoming HTTPS traffic (TCP/443) from worker nodes (for API server)
+      GroupId: !Ref ControlPlaneSecurityGroup
+      SourceSecurityGroupId: !Ref WorkerNodesSecurityGroup
+      IpProtocol: tcp
+      ToPort: 443
+      FromPort: 443
+  ControlPlaneEgressToWorkerNodesKubelet:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allow outgoing kubelet traffic (TCP/10250) to worker nodes
+      GroupId: !Ref ControlPlaneSecurityGroup
+      DestinationSecurityGroupId: !Ref WorkerNodesSecurityGroup
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+  ControlPlaneEgressToWorkerNodesHttps:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allow outgoing HTTPS traffic (TCP/442) to worker nodes (for pods running extension API servers)
+      GroupId: !Ref ControlPlaneSecurityGroup
+      DestinationSecurityGroupId: !Ref WorkerNodesSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+  WorkerNodesSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for all the worker nodes
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-WorkerNodesSecurityGroup"
+        - Key: !Sub "kubernetes.io/cluster/${ControlPlane}"
+          Value: "owned"
+  WorkerNodesIngressFromWorkerNodes:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow all incoming traffic from other worker nodes
+      GroupId: !Ref WorkerNodesSecurityGroup
+      SourceSecurityGroupId: !Ref WorkerNodesSecurityGroup
+      IpProtocol: "-1"
+  WorkerNodesIngressFromControlPlaneKubelet:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow incoming kubelet traffic (TCP/10250) from control plane 
+      GroupId: !Ref WorkerNodesSecurityGroup
+      SourceSecurityGroupId: !Ref ControlPlaneSecurityGroup
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+  WorkerNodesIngressFromControlPlaneHttps:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow incoming HTTPS traffic (TCP/443) from control plane (for pods running extension API servers)
+      GroupId: !Ref WorkerNodesSecurityGroup
+      SourceSecurityGroupId: !Ref ControlPlaneSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+  WorkerNodesRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Effect: Allow
+          Principal:
+            Service:
+              - ec2.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+  WorkerNodegroup:
+    Type: AWS::EKS::Nodegroup
+    DependsOn: ControlPlane
+    Properties:
+      ClusterName: !Ref EKSClusterName
+      NodeRole: !GetAtt WorkerNodesRole.Arn
+      ScalingConfig:
+        MinSize: 1
+        DesiredSize: 2
+        MaxSize:
+          Ref: NumWorkerNodes
+      Subnets:
+        - !Ref AZPrivateSubnetA
+        - !Ref AZPrivateSubnetB
+  WorkerNodesLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    # Wait until cluster is ready before launching worker nodes
+    DependsOn: ControlPlane
+    Properties:
+      AssociatePublicIpAddress: false
+      IamInstanceProfile: !Ref WorkerNodesInstanceProfile
+      ImageId: !If
+          - HasNodeImageId
+          - !Ref NodeImageId
+          - !Ref NodeImageIdSSMParam
+      InstanceType: !Ref WorkerNodesInstanceType
+      KeyName: !Ref KeyPairName
+      SecurityGroups:
+        - !Ref WorkerNodesSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+            #!/bin/bash
+            set -o xtrace
+            /etc/eks/bootstrap.sh ${ControlPlane}
+            /opt/aws/bin/cfn-signal \
+                            --exit-code $? \
+                            --stack  ${AWS::StackName} \
+                            --resource WorkerNodeGroup \
+                            --region ${AWS::Region}
+            /usr/bin/ping -c 5 google.com
+  WorkerNodesInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref WorkerNodesRole
+Outputs:
+  StackName:
+    Description: "Stack Name"
+    Value: !Sub "${AWS::StackName}"
+  PublicSubnetIds:
+    Description: Region Public Subnets IDs in the VPC
+    Value: !Join [ ",", [ !Ref AZPublicSubnetA, !Ref AZPublicSubnetB] ]  
+  PrivateSubnetIds:
+    Description: Region Private Subnets IDs in the VPC
+    Value: !Join [ ",", [ !Ref AZPrivateSubnetB, !Ref AZPrivateSubnetB ] ]
+  LZPublicSubnetId:
+    Description: Local Zone Public Subnet in the VPC
+    Value:  !Ref LZPublicSubnet 
+  LZPrivateSubnetId:
+    Description: Local Zone Private Subnet in the VPC
+    Value: !Ref LZPrivateSubnet 
+  VpcId:
+    Description: The VPC Id
+    Value: !Ref VPC
+  EKSCluster:
+    Description: The EKS Cluster
+    Value: !Ref ControlPlane
+  EKSClusterSG:
+    Description: The EKS Cluster Security Group
+    Value: !Ref ControlPlaneSecurityGroup
+  ManagedWorkerNodesSecurityGroup:
+    Description: The EKS Managed Nodes Security Group
+    Value: !Ref WorkerNodesSecurityGroup
+  KeyPair:
+    Description: Cluster EC2 Keypair
+    Value: !Ref KeyPairName
+  WorkerNodesRole:
+    Description: Cluster's worker nodes role
+    Value: !Ref WorkerNodesRole
