@@ -226,7 +226,7 @@ ClusterControlPlaneSecurityGroup=$(aws cloudformation describe-stacks --stack-na
 
 ![auth2](/static/joined-self-managed.jpeg) 
 
-> [!WARNING]
+>**Warning**
 > If you receive any authorization or resource type errors, see [Unauthorized or access denied (kubectl)](https://docs.amazonaws.cn/en_us/eks/latest/userguide/troubleshooting.html#unauthorized) and [further references](https://docs.amazonaws.cn/en_us/eks/latest/userguide/eks-outposts-self-managed-nodes.html) in the troubleshooting topic.
 
 #### Step 3: Installing the AWS Load Balancer Controller add-on
@@ -319,7 +319,7 @@ curl -Lo v2_4_7_ingclass.yaml https://github.com/kubernetes-sigs/aws-load-balanc
    * Search for `args`.
    * Add `aws-vpc-id` & `aws-region` to the containers' args.
 
->[!WARNING]
+>**Warning**
 >Replace `vpc-xxxxxxxx` with VpcId echo before updating the file with containers' args.
 
 
@@ -396,7 +396,7 @@ aws-load-balancer-controller   1/1     1            1          84s
 
  ![2048](/assets/2048.png)
 
->[!NOTE]
+>**Note**
 >-   Kubernetes assigns the service its own IP address that is accessible only from within the cluster. To access the service from outside of your cluster, deploy the AWS Load Balancer Controller to load balance [application](https://docs.aws.amazon.com/eks/latest/userguide/sample-deployment.html) or network traffic to the service. 
 >
 >- Enabling IAM user and role access to your [cluster](https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html)
