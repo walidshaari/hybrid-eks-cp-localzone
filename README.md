@@ -74,6 +74,8 @@ aws ec2 create-key-pair --key-name ws-default-keypair --query 'KeyMaterial' --ou
 - Setup IAM user and role to assume 
 
 ```bash
+#create IAM user
+#aws iam create-user --user-name hybrid-eks-user
 
 account_id=$(aws sts get-caller-identity --query Account --output text)
 echo $account_id
@@ -98,11 +100,10 @@ EOF
 #create policy
 aws iam create-policy --policy-name hybrid-eks-policy --policy-document file://user-policy.json
 
-#replace account id with your account
+#attach policy 
 aws iam attach-user-policy --user-name hybrid-eks-user --policy-arn "arn:aws:iam::$account_id:policy/hybrid-eks-policy"
 
 #load-balancer-role-trust-policy 
-#make sure to change the policy's principal based on your account id
 cat >eks-role-trust-policy.json <<EOF
 {
     "Version": "2012-10-17",
@@ -116,11 +117,13 @@ cat >eks-role-trust-policy.json <<EOF
 }
 EOF
 
-#update the account id in the trust policy before creating the role
+#create hybrid-eks-user-role role
 aws iam create-role --role-name hybrid-eks-user-role --assume-role-policy-document file://eks-role-trust-policy.json
 
+#attach the policy to the role
 aws iam attach-role-policy --role-name hybrid-eks-user-role --policy-arn "arn:aws:iam::$account_id:policy/hybrid-eks-policy"
 
+#assume role
 aws sts assume-role --role-arn "arn:aws:iam::$account_id:role/hybrid-eks-user-role" --role-session-name currentsession
 
 #replace export values from the assume role command results 
