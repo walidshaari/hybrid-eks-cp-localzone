@@ -38,83 +38,16 @@ For the application deployment, we use the combination of CloudFormation YAML fi
 
 ### Prerequisites
 
-- An AWS account with the Administrator permissions. 
+- An AWS account, IAM user with the Administrator permissions. 
+
+![sts](/assets/sts.jpeg)
 
 - A shell environment. An IDE (Integrated Development Environment) environment such as Visual Studio Code or AWS Cloud9 is recommended. 
 
-- Setup IAM user and role to assume
-
-```bash
-#create IAM user
-aws iam create-user --user-name hybrid-eks-user
-
-#create user policy
-cat >user-policy.json <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-      {
-        "Effect": "Allow",
-        "Action": [
-          "*",
-          "iam:ListRoles",
-          "sts:AssumeRole"
-        ],
-        "Resource": "*"
-      }
-    ]
-  }
-EOF
-
-#create policy
-aws iam create-policy --policy-name hybrid-eks-policy --policy-document file://user-policy.json
-
-#replace account id with your account
-aws iam attach-user-policy --user-name hybrid-eks-user --policy-arn "arn:aws:iam::<account id>:policy/hybrid-eks-policy"
-
-#load-balancer-role-trust-policy 
-#make sure to change the policy's principal based on your account id
-cat >eks-role-trust-policy.json <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "<account id>"
-      },
-      "Action": "sts:AssumeRole"
-    }
-}
-EOF
-
-#update the account id in the trust policy before creating the role
-aws iam create-role --role-name hybrid-eks-user-role --assume-role-policy-document file://eks-role-trust-policy.json
-
-aws iam attach-role-policy --role-name hybrid-eks-user-role --policy-arn "arn:aws:iam::<account id>:policy/hybrid-eks-policy"
-
-aws sts assume-role --role-arn "arn:aws:iam::<account id>:role/hybrid-eks-user-role" --role-session-name currentsession
-
-#replace export values from the assume role command results 
-export AWS_ACCESS_KEY_ID=<AAAA>
-export AWS_SECRET_ACCESS_KEY=<BBBB>
-export AWS_SESSION_TOKEN=<CCCC>
-```
-
-- Opt-in the Local Zone that you would like to run your workload in.
 
 - Installation of the latest version AWS Command Line Interface (AWS CLI) (v2 recommended), kubectl, eksctl, 
 
-
-<!-- # Install NodeJS v16 and set as default
-npm install -g npm
-nvm install v16.17.0
-nvm alias default 16.17.0
-
-# Install TypeScript
-npm install -g typescript -->
-
 ```bash
-
 #Download and extract the latest release of awscli with the following
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
@@ -138,6 +71,66 @@ kubectl version --short --client
 #create an EC2 key pair
 aws ec2 create-key-pair --key-name ws-default-keypair --query 'KeyMaterial' --output text > MyKeyPair.pem
 ```
+- Setup IAM user and role to assume 
+
+```bash
+
+account_id=$(aws sts get-caller-identity --query Account --output text)
+echo $account_id
+#create user policy
+cat >user-policy.json <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "*",
+          "iam:ListRoles",
+          "sts:AssumeRole"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }
+EOF
+
+#create policy
+aws iam create-policy --policy-name hybrid-eks-policy --policy-document file://user-policy.json
+
+#replace account id with your account
+aws iam attach-user-policy --user-name hybrid-eks-user --policy-arn "arn:aws:iam::$account_id:policy/hybrid-eks-policy"
+
+#load-balancer-role-trust-policy 
+#make sure to change the policy's principal based on your account id
+cat >eks-role-trust-policy.json <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "$account_id"
+      },
+      "Action": "sts:AssumeRole"
+    }
+}
+EOF
+
+#update the account id in the trust policy before creating the role
+aws iam create-role --role-name hybrid-eks-user-role --assume-role-policy-document file://eks-role-trust-policy.json
+
+aws iam attach-role-policy --role-name hybrid-eks-user-role --policy-arn "arn:aws:iam::$account_id:policy/hybrid-eks-policy"
+
+aws sts assume-role --role-arn "arn:aws:iam::$account_id:role/hybrid-eks-user-role" --role-session-name currentsession
+
+#replace export values from the assume role command results 
+export AWS_ACCESS_KEY_ID=<AAAA>
+export AWS_SECRET_ACCESS_KEY=<BBBB>
+export AWS_SESSION_TOKEN=<CCCC>
+```
+
+- Opt-in the Local Zone that you would like to run your workload in.
+
 ### Walkthrough
 
 #### Step 1: Create the topology along EKS cluster in the Region
@@ -368,7 +361,7 @@ aws-load-balancer-controller   1/1     1            1          84s
  echo $(aws cloudformation describe-stacks --stack-name "stack1" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`LZPublicSubnetId`].OutputValue' --output text)
 ```
 
- 3. Open 2048_lz file and update tag **"alb.ingress.kubernetes.io/subnets"** with subnet captured from previous step, **save** file, then deploy the application using the following command
+ 3. Open 2048_lz file and update tag **"alb.ingress.kubernetes.io/subnets"** with subnet captured from previous step, **save** file, then deploy the applications using the following command
       
 ```bash
 #Deploying to pods in a cluster in the Region (public)
@@ -402,6 +395,17 @@ aws-load-balancer-controller   1/1     1            1          84s
 >- Enabling IAM user and role access to your [cluster](https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html)
 >
 >- Installing the AWS Load Balancer Controller add-on further [details](https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html)
+
+## Troubleshooting
+
+If you encounter a situation where you are unable to obtain an address for a test games, it may be helpful to troubleshoot the AWS Load Balancer Controller. One possible solution is to delete the controller using the full pod name. To do this, you can run the following command: 
+
+>```bash
+>kubectl get pods -o wide -n kube-system
+>kubectl delete pods <aws-loadbalancer-controller-pod> -n kube-system
+>```
+
+Replace <caws-loadbalancer-controller-pod> with the full name of the AWS Load Balancer Controller pod.
 
 ## Security
 
