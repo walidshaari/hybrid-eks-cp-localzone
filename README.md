@@ -1,8 +1,8 @@
 ## Hybrid EKS control plane using AWS Local Zones
 
-A hybrid AWS EKS control plane using AWS Local Zones is a control plane that spans multiple geographic locations, including Local Zones and AWS Regions. With this configuration, you can deploy applications closer to end-users for low-latency performance while maintaining a centralized management plane for your EKS control plane.
+A hybrid AWS EKS cluster using AWS Local Zones is a control plane that spans multiple geographic locations, including Local Zones and AWS Regions. With this configuration, you can deploy applications closer to end-users for low-latency performance while maintaining a centralized management plane for your EKS cluster.
 
-To set up a hybrid AWS EKS control plane using AWS Local Zones, you need to create an Amazon EKS control plane in an AWS Region. You can then add self-managed nodes to the EKS cluster that are located in the Local Zones. These nodes can be used to run Kubernetes pods that are designed to serve requests from users in the Local Zone.
+To set up a hybrid AWS EKS cluster using AWS Local Zones, you need to create an Amazon EKS control plane in an AWS Region. You can then add self-managed nodes to the EKS cluster that are located in the Local Zones. These nodes can be used to run Kubernetes pods that are designed to serve requests from users in the Local Zone.
 
 To ensure the pods are highly available, you can use Kubernetes' node affinity and anti-affinity features to ensure that pods are scheduled on nodes in different Local Zones. 
 
@@ -224,7 +224,7 @@ ClusterControlPlaneSecurityGroup=$(aws cloudformation describe-stacks --stack-na
 
 > To stop monitoring the status of nodes in a Kubernetes cluster using the "watch" command, you can press "Ctrl + C" when you observe that new node is in the "Ready" state. This will terminate the command and exit the watch mode.
 
-![auth2](/static/joined-self-managed.jpeg) 
+![auth2](/assets/joined-self-managed.jpeg) 
 
 >**Warning**
 > If you receive any authorization or resource type errors, see [Unauthorized or access denied (kubectl)](https://docs.amazonaws.cn/en_us/eks/latest/userguide/troubleshooting.html#unauthorized) and [further references](https://docs.amazonaws.cn/en_us/eks/latest/userguide/eks-outposts-self-managed-nodes.html) in the troubleshooting topic.
