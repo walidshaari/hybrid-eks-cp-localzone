@@ -167,7 +167,17 @@ Resources:
         - Key: Name
           Value: !Sub "${AWS::StackName}-SelfManagedWorkerNodesSecurityGroup"
       VpcId: !Ref VpcId
-
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W42
+            reason: "At this stage of the lab, we meant to allow all incoming traffic from other worker nodes"
+          - id: W40
+            reason: "At this stage of the lab, we don’t have the address of the streaming server, so we need to open oubound connection on port 8554 to 0.0.0.0/0. We need port 80 and 443 to access al2 repositories"
+          - id: W5
+            reason: "At this stage of the lab, we don’t have the address of the streaming server, so we need to open oubound connection on port 8554 to 0.0.0.0/0. We need port 80 and 443 to access al2 repositories"
+          - id: W27
+            reason: "Security Groups meant to ingress with port range instead of just a single port for this lab"
   NodeSecurityGroupIngress:
     Type: "AWS::EC2::SecurityGroupIngress"
     DependsOn: NodeSecurityGroup
@@ -178,7 +188,13 @@ Resources:
       IpProtocol: "-1"
       SourceSecurityGroupId: !Ref NodeSecurityGroup
       ToPort: 65535
-
+  WorkerNodesEgressFromControlPlaneHttps:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: all traffic is allowed outbound
+      GroupId: !Ref NodeSecurityGroup
+      CidrIp: 0.0.0.0/0
+      IpProtocol: "-1"
   ClusterControlPlaneSecurityGroupIngress:
     Type: "AWS::EC2::SecurityGroupIngress"
     DependsOn: NodeSecurityGroup

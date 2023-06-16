@@ -410,6 +410,25 @@ If you encounter a situation where you are unable to obtain an address for a tes
 
 Replace <caws-loadbalancer-controller-pod> with the full name of the AWS Load Balancer Controller pod.
 
+## Desclaimer 
+This solution is a sample CloudFormation template intended solely for the purpose of demonstrating the capabilities of Local Zones for low-latency applications using the Amazon EKS control plane in the specified region and managed nodes in the specified local zone. It also showcases resiliency by utilizing managed nodes in the region for builders showcases, and labs. It is important to note that this solution is not intended to be used as a production-ready deployment pathway.
+
+While developing for this environment, it is crucial to consider the following concerns and ensure appropriate measures are taken:
+
+- Least Privilege: 
+    - It is advised to enforce least privilege access controls for “user-policy.json”.
+    - It is advised to use Secrets Manager or other encryption/protection for access key, secret access key.
+- The current configuration allows all ports and protocols (-1 = allow all). Evaluate if this level of access is necessary and consider locking down specific port/protocol combinations as per your requirements.
+- Lack of Production Controls: This sample template does not incorporate production controls and may not provide sufficient warnings or advisories regarding potential risks. Additional measures and practices are essential to ensure the security and stability of a production environment.
+- Unrestricted Outbound Internet Access: The current configuration allows unrestricted outbound internet access through a NAT gateway. Evaluate if this level of access is necessary and consider implementing appropriate controls
+- Self-Managed Nodes: The self-managed nodes in this sample lack controls for patching, monitoring, and other essential management practices. In a production environment, it is crucial to have robust controls in place for these nodes to ensure they are properly maintained, monitored, and secured.
+- CloudFront/WAF: This solution does not incorporate CloudFront or a Web Application Firewall (WAF) in front of the Application Load Balancer (ALB) for the game test. Consider implementing these services to enhance the security and performance of your application, protect against common web attacks, and improve content delivery.
+
+Please be aware that using this sample CloudFormation template in a production environment without addressing the aforementioned concerns may result in security vulnerabilities, operational challenges, and inadequate compliance with best practices.
+
+>**Warning**
+>It is highly recommended to consult with experienced professionals and conduct thorough security reviews and testing before deploying any solution to a production environment.
+
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.

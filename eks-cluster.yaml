@@ -68,6 +68,11 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W60
+            reason: "VPC flowlog will add extra cost to this lab."
   AZPublicSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -82,6 +87,11 @@ Resources:
           Value: "1"
         - Key: !Sub "kubernetes.io/cluster/${EKSClusterName}"
           Value: shared
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W33
+            reason: "Instances launched in this subnet receive a public IPv4 address by default should be permitted for the purpose of this sample project."
   AZPublicSubnetB:
     Type: AWS::EC2::Subnet
     Properties:
@@ -96,6 +106,11 @@ Resources:
           Value: "1"
         - Key: !Sub "kubernetes.io/cluster/${EKSClusterName}"
           Value: shared
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W33
+            reason: "Instances launched in this subnet receive a public IPv4 address by default should be permitted for the purpose of this sample project."
   AZPrivateSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -132,6 +147,11 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-LZPublicSubnet"
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W33
+            reason: "Instances launched in this subnet receive a public IPv4 address by default should be permitted for the purpose of this sample project."
   LZPrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -254,7 +274,12 @@ Resources:
           - !Ref ControlPlaneSecurityGroup
         SubnetIds:
           - !Ref AZPrivateSubnetA
-          - !Ref AZPrivateSubnetB 
+          - !Ref AZPrivateSubnetB
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W82
+            reason: "Key parameter already assigned to WorkerNodesLaunchConfiguration to enable Encryption"
   ControlPlaneRole:
     Type: AWS::IAM::Role
     Properties:
@@ -314,6 +339,17 @@ Resources:
           Value: !Sub "${AWS::StackName}-WorkerNodesSecurityGroup"
         - Key: !Sub "kubernetes.io/cluster/${ControlPlane}"
           Value: "owned"
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W42
+            reason: "At this stage of the lab, we meant to allow all incoming traffic from other worker nodes"
+          - id: W40
+            reason: "At this stage of the lab, we don’t have the address of the streaming server, so we need to open oubound connection on port 8554 to 0.0.0.0/0. We need port 80 and 443 to access al2 repositories"
+          - id: W5
+            reason: "At this stage of the lab, we don’t have the address of the streaming server, so we need to open oubound connection on port 8554 to 0.0.0.0/0. We need port 80 and 443 to access al2 repositories"
+          - id: W27
+            reason: "Security Groups meant to ingress with port range instead of just a single port for this lab"
   WorkerNodesIngressFromWorkerNodes:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -339,6 +375,13 @@ Resources:
       IpProtocol: tcp
       FromPort: 443
       ToPort: 443
+  WorkerNodesEgressFromControlPlaneHttps:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: all traffic is allowed outbound
+      GroupId: !Ref WorkerNodesSecurityGroup
+      CidrIp: 0.0.0.0/0
+      IpProtocol: "-1"
   WorkerNodesRole:
     Type: AWS::IAM::Role
     Properties:
@@ -368,6 +411,7 @@ Resources:
       Subnets:
         - !Ref AZPrivateSubnetA
         - !Ref AZPrivateSubnetB
+       
   WorkerNodesLaunchConfiguration:
     Type: AWS::AutoScaling::LaunchConfiguration
     # Wait until cluster is ready before launching worker nodes
