@@ -75,7 +75,7 @@ aws ec2 create-key-pair --key-name ws-default-keypair --query 'KeyMaterial' --ou
 
 ```bash
 #create IAM user
-#aws iam create-user --user-name hybrid-eks-user
+aws iam create-user --user-name hybrid-eks-user
 
 account_id=$(aws sts get-caller-identity --query Account --output text)
 echo $account_id
@@ -123,7 +123,8 @@ aws iam create-role --role-name hybrid-eks-user-role --assume-role-policy-docume
 #attach the policy to the role
 aws iam attach-role-policy --role-name hybrid-eks-user-role --policy-arn "arn:aws:iam::$account_id:policy/hybrid-eks-policy"
 
-#assume role
+# aws configure using the newly created user then assume role
+aws configure
 aws sts assume-role --role-arn "arn:aws:iam::$account_id:role/hybrid-eks-user-role" --role-session-name currentsession
 
 #replace export values from the assume role command results 
