@@ -29,7 +29,7 @@ spec:
               - key: topology.kubernetes.io/zone
                 operator: NotIn
                 values:
-                - us-west-2-las-1a
+                - us-west-2-lax-1a
       containers:
       - image: public.ecr.aws/l6m2t8p7/docker-2048:latest
         imagePullPolicy: Always

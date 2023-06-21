@@ -38,7 +38,7 @@ For the application deployment, we use the combination of CloudFormation YAML fi
 
 ### Prerequisites
 
-- An AWS account, IAM user with the Administrator permissions. 
+- An AWS account, IAM user `hybrid-eks-user` with the Administrator permissions. 
 
 ![sts](/assets/sts.jpeg)
 
@@ -71,15 +71,12 @@ kubectl version --short --client
 #create an EC2 key pair
 aws ec2 create-key-pair --key-name ws-default-keypair --query 'KeyMaterial' --output text > MyKeyPair.pem
 ```
-- Setup IAM user and role to assume 
+- Setup IAM user `hybrid-eks-user` to role to assume 
 
 ```bash
-#create IAM user
-aws iam create-user --user-name hybrid-eks-user
-
 account_id=$(aws sts get-caller-identity --query Account --output text)
 echo $account_id
-#create user policy
+#create user policy enabling the user to assumer role 
 cat >user-policy.json <<EOF
 {
     "Version": "2012-10-17",
@@ -87,7 +84,6 @@ cat >user-policy.json <<EOF
       {
         "Effect": "Allow",
         "Action": [
-          "*",
           "iam:ListRoles",
           "sts:AssumeRole"
         ],
@@ -124,9 +120,12 @@ aws iam create-role --role-name hybrid-eks-user-role --assume-role-policy-docume
 aws iam attach-role-policy --role-name hybrid-eks-user-role --policy-arn "arn:aws:iam::$account_id:policy/hybrid-eks-policy"
 
 # aws configure using the newly created user then assume role
-aws configure
 aws sts assume-role --role-arn "arn:aws:iam::$account_id:role/hybrid-eks-user-role" --role-session-name currentsession
+```
 
+- Replace export values from the assume role command results 
+
+```bash
 #replace export values from the assume role command results 
 export AWS_ACCESS_KEY_ID=<AAAA>
 export AWS_SECRET_ACCESS_KEY=<BBBB>
