@@ -71,7 +71,7 @@ kubectl version --short --client
 #create an EC2 key pair
 aws ec2 create-key-pair --key-name ws-default-keypair --query 'KeyMaterial' --output text > MyKeyPair.pem
 ```
-- Setup IAM user `hybrid-eks-user` to role to assume 
+- Setup IAM user `hybrid-eks-user`, role and assume role.
 
 ```bash
 account_id=$(aws sts get-caller-identity --query Account --output text)
