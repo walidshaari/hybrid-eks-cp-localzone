@@ -34,6 +34,7 @@ Parameters:
       Default: us-west-2-lax-1a
       AllowedValues:
         - us-west-2-lax-1a
+        - us-west-2-las-1a
       Description: Region's mature local zone
   NodeImageId:
     Type: String

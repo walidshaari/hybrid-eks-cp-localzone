@@ -132,7 +132,7 @@ export AWS_SECRET_ACCESS_KEY=<BBBB>
 export AWS_SESSION_TOKEN=<CCCC>
 ```
 
-- Opt-in the Local Zone that you would like to run your workload in.
+- Opt-in the Local Zone that you would like to run your workload in `us-west-2-lax-1a`.
 
 ### Walkthrough
 
