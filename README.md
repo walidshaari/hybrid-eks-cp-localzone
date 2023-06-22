@@ -430,10 +430,15 @@ aws cloudformation delete-stack --stack-name stack1
 
 ```
 
-Then, go to the Cloudformation console and make sure the stack was deleted. Lastly, delete created user and role assumed.
+Then, go to the Cloudformation console and make sure the stacks were deleted. Lastly, delete created user and role assumed.
 
 ## Conclusion 
 
+Setting up a hybrid Amazon EKS cluster using AWS Local Zones offers many benefits for organizations looking to improve the performance, availability, and resiliency of their containerized applications. With this setup, you can leverage the low-latency access to compute and storage resources in geographically closer locations to your end-users or data sources.
+
+In this solution, we have covered the essential steps to create a hybrid EKS cluster, including setting up the EKS cluster, launching self-managed node in the Local Zone, joining the node in the Local Zone to the primary cluster, deploying a sample application.
+
+By following these steps, you built a hybrid EKS cluster that is highly available, fault-tolerant, and scalable while maintaining a centralized control plane. With this infrastructure, you can easily deploy and manage containerized applications in multiple locations, improving the user experience and reducing the risk of downtime.
 
 ## Security
 
