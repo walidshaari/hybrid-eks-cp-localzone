@@ -416,6 +416,25 @@ If you encounter a situation where you are unable to obtain an address for a tes
 
 Replace <aws-loadbalancer-controller-pod> with the full name of the AWS Load Balancer Controller pod.
 
+## Clean up
+
+To terminate the resources that we created in this post, run the following:
+
+```bash
+
+kubectl delete -f 2048_backup.yaml
+kubectl delete -f 2048_lz.yaml
+kubectl delete -f v2_4_7_ingclass.yaml
+aws cloudformation delete-stack --stack-name stack2
+aws cloudformation delete-stack --stack-name stack1
+
+```
+
+Then, go to the Cloudformation console and make sure the stack was deleted. Lastly, delete created user and role assumed.
+
+## Conclusion 
+
+
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
