@@ -1,14 +1,20 @@
 ## Hybrid EKS control plane using AWS Local Zones
 
-A hybrid AWS EKS cluster using AWS Local Zones is a control plane that spans multiple geographic locations, including Local Zones and AWS Regions. With this configuration, you can deploy applications closer to end-users for low-latency performance while maintaining a centralized management plane for your EKS cluster.
+A hybrid Amazon EKS cluster using AWS Local Zones is a control plane that spans multiple geographic locations, including Local Zones and AWS Regions. With this configuration, you can deploy applications closer to end-users for low-latency performance while maintaining a centralized management plane for your EKS cluster.
 
-To set up a hybrid AWS EKS cluster using AWS Local Zones, you need to create an Amazon EKS control plane in an AWS Region. You can then add self-managed nodes to the EKS cluster that are located in the Local Zones. These nodes can be used to run Kubernetes pods that are designed to serve requests from users in the Local Zone.
+To set up a hybrid Amazon EKS cluster using AWS Local Zones, you need to create an Amazon EKS control plane in an AWS Region. You can then add self-managed nodes to the EKS cluster that are located in the Local Zones. These nodes can be used to run Kubernetes pods that are designed to serve requests from users in the Local Zone.
 
 To ensure the pods are highly available, you can use Kubernetes' node affinity and anti-affinity features to ensure that pods are scheduled on nodes in different Local Zones. 
 
-By setting up a hybrid AWS EKS control plane using AWS Local Zones, you can take advantage of the low-latency benefits of running your application in proximity to end-users while maintaining a centralized management plane for your EKS cluster.
+By setting up a hybrid Amazon EKS control plane using AWS Local Zones, you can take advantage of the low-latency benefits of running your application in proximity to end-users while maintaining a centralized management plane for your EKS cluster.
 
 When you are looking to understand how to design workloads that are stretched across AWS Region and Local Zones, this project presents a sample architecture. The project also shares complementary CloudFormation that you can consider to improve operational and developer efficiency.
+
+<br>
+
+> :warning: **Disclaimer: The sample code; software libraries; command line tools; proofs of concept; templates; or other related technology (including any of the foregoing that are provided by our personnel) is provided to you as AWS Content under the AWS Customer Agreement, or the relevant written agreement between you and AWS (whichever applies). You should not use this AWS Content in your production accounts, or on production or other critical data. You are responsible for testing, securing, and optimizing the AWS Content, such as sample code, as appropriate for production grade use based on your specific quality control practices and standards. Deploying AWS Content may incur AWS charges for creating or using AWS chargeable resources, such as running Amazon EC2 instances or using Amazon S3 storage. ** 
+
+<br> 
 
 ## Solution Overview
 
@@ -409,10 +415,6 @@ If you encounter a situation where you are unable to obtain an address for a tes
 >```
 
 Replace <aws-loadbalancer-controller-pod> with the full name of the AWS Load Balancer Controller pod.
-
-## Disclaimer 
-
-The sample code; software libraries; command line tools; proofs of concept; templates; or other related technology (including any of the foregoing that are provided by our personnel) is provided to you as AWS Content under the AWS Customer Agreement, or the relevant written agreement between you and AWS (whichever applies). You should not use this AWS Content in your production accounts, or on production or other critical data. You are responsible for testing, securing, and optimizing the AWS Content, such as sample code, as appropriate for production grade use based on your specific quality control practices and standards. Deploying AWS Content may incur AWS charges for creating or using AWS chargeable resources, such as running Amazon EC2 instances or using Amazon S3 storage.
 
 ## Security
 
