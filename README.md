@@ -357,7 +357,7 @@ aws-load-balancer-controller   1/1     1            1          84s
 
 ![cnt](/assets/controller.jpeg) 
 
-### Step 2: Deploy two sample application to the Region and to the Local Zones
+#### Step 4: Deploy two sample application to the Region and to the Local Zones
 
 
  1.  Deploy the game [2048](https://play2048.co/) as a sample application to verify that the AWS Load Balancer Controller creates an AWS ALB as a result of the ingress object or use the sample games configured along the nodeAffinity in this solution.
