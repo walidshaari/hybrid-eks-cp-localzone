@@ -46,10 +46,9 @@ For the application deployment, we use the combination of CloudFormation YAML fi
 
 - An AWS account, IAM user `hybrid-eks-user` with the Administrator permissions. 
 
-![sts](/assets/sts.jpeg)
-
 - A shell environment. An IDE (Integrated Development Environment) environment such as Visual Studio Code or AWS Cloud9 is recommended. 
 
+![sts](/assets/sts.jpeg)
 
 - Installation of the latest version AWS Command Line Interface (AWS CLI) (v2 recommended), kubectl, eksctl, 
 
@@ -90,6 +89,7 @@ cat >user-policy.json <<EOF
       {
         "Effect": "Allow",
         "Action": [
+          "*",
           "iam:ListRoles",
           "sts:AssumeRole"
         ],
@@ -420,17 +420,37 @@ Replace <aws-loadbalancer-controller-pod> with the full name of the AWS Load Bal
 
 To terminate the resources that we created in this post, run the following:
 
+- Detach polices from created roles **stack2-NodeInstanceRole-**<XXXXX> and **stack1-ControlPlaneRole-**<XXXYYY>
+
+- Run the following
 ```bash
 
 kubectl delete -f 2048_backup.yaml
 kubectl delete -f 2048_lz.yaml
 kubectl delete -f v2_4_7_ingclass.yaml
+
+# manually detach polices from created roles stack2-NodeInstanceRole-<XXXXX> and stack1-ControlPlaneRole-<XXXYYY>
+
+ManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "stack1" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`ManagedWorkerNodesSecurityGroup`].OutputValue' --output text)
+SelfManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "stack2" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeSecurityGroup`].OutputValue' --output text)
+
+aws ec2 revoke-security-group-ingress \
+    --group-id $ManagedWorkerNodesSecurityGroup \
+    --protocol -1 \
+    --port -1 \
+    --source-group $SelfManagedWorkerNodesSecurityGroup
+aws ec2 revoke-security-group-ingress \
+    --group-id $SelfManagedWorkerNodesSecurityGroup \
+    --protocol -1 \
+    --port -1 \
+    --source-group $ManagedWorkerNodesSecurityGroup
+
 aws cloudformation delete-stack --stack-name stack2
 aws cloudformation delete-stack --stack-name stack1
 
 ```
 
-Then, go to the Cloudformation console and make sure the stacks were deleted. Lastly, delete created user and role assumed.
+Then, go to the Cloudformation console and make sure the stacks were deleted. Lastly, delete created user, policy and role assumed.
 
 ## Conclusion 
 
