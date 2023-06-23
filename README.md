@@ -76,7 +76,7 @@ kubectl version --short --client
 #create an EC2 key pair
 aws ec2 create-key-pair --key-name ws-default-keypair --query 'KeyMaterial' --output text > MyKeyPair.pem
 ```
-- Assume role, using AWS Identity and Access Management (AWS IAM) Role,  For setup details, please refer to the docs ![here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-role.html).
+- Assume role, using AWS Identity and Access Management (AWS IAM) Role,  For setup details, please refer to the docs [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-role.html).
 
 - Opt-in the Local Zone that you would like to run your workload in `us-west-2-lax-1a`.
 
