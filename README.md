@@ -154,9 +154,10 @@ export AWS_SESSION_TOKEN=<CCCC>
   --parameters ParameterKey=EKSClusterName,ParameterValue=eks-cluster ParameterKey=NumWorkerNodes,ParameterValue=2  ParameterKey=KeyPairName,ParameterValue=ws-default-keypair
 ```
 
- -  When you observe the `StackId` prompt appearing in your terminal, it indicates that the execution of your CloudFormation has been initiated successfully. This prompt serves as a confirmation that your CloudFormation stack has started to execute.
+>**Note**
+>  When you observe the `StackId` prompt appearing in your terminal, it indicates that the execution of your CloudFormation has been initiated successfully. This prompt serves as a confirmation that your CloudFormation stack has started to execute.
 
- ![stackcreated](/assets/stackId.jpeg)
+
 
 - Wait for 10-15 mins for the CloudFormation to create all resources "CREATE_COMPLETE" status for the stack.
 
@@ -189,6 +190,7 @@ ClusterControlPlaneSecurityGroup=$(aws cloudformation describe-stacks --stack-na
   --parameters ParameterKey=ClusterName,ParameterValue=eks-cluster ParameterKey=ClusterControlPlaneSecurityGroup,ParameterValue=$ClusterControlPlaneSecurityGroup  ParameterKey=KeyName,ParameterValue=$KeyName ParameterKey=Subnets,ParameterValue=$Subnets ParameterKey=VpcId,ParameterValue=$VpcId ParameterKey=NodeGroupName,ParameterValue=eks-selfmanaged-groupnode ParameterKey=NodeImageId,ParameterValue=ami-0b149b4c68ab69dce
 ```
 
+>**Note**
 > When you observe the `StackId` prompt appearing in your terminal, it indicates that the execution of your CloudFormation has been initiated successfully. This prompt serves as a confirmation that your CloudFormation stack has started to execute.
 
 - Wait for 5 mins for the CloudFormation to create all resources "CREATE_COMPLETE" status for the stack.
@@ -322,7 +324,7 @@ curl -Lo v2_4_7_ingclass.yaml https://github.com/kubernetes-sigs/aws-load-balanc
    * Add `aws-vpc-id` & `aws-region` to the containers' args.
 
 
->:warning: **Warning** Replace `vpc-xxxxxxxx` with VpcId echo before updating the file with containers' args.
+> **Warning** Replace `vpc-xxxxxxxx` with VpcId echo before updating the file with containers' args.
 
 
 ```bash
