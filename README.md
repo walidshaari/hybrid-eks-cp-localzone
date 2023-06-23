@@ -420,7 +420,7 @@ Replace <aws-loadbalancer-controller-pod> with the full name of the AWS Load Bal
 
 ## Clean up
 
-To terminate the resources that we created in this post, run the following:
+To terminate the resources that we created in this sample, as the following:
 
 - Detach polices from created roles **stack2-NodeInstanceRole**-XXXXXX, **stack1-WorkerNodesRole**-YYYYYY and **stack1-ControlPlaneRole**-ZZZZZZ
 
