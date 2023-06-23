@@ -321,8 +321,8 @@ curl -Lo v2_4_7_ingclass.yaml https://github.com/kubernetes-sigs/aws-load-balanc
    * Search for `args`.
    * Add `aws-vpc-id` & `aws-region` to the containers' args.
 
->**Warning**
->Replace `vpc-xxxxxxxx` with VpcId echo before updating the file with containers' args.
+
+>:warning: **Warning** Replace `vpc-xxxxxxxx` with VpcId echo before updating the file with containers' args.
 
 
 ```bash
