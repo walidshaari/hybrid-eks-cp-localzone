@@ -1,14 +1,14 @@
-## Hybrid EKS control plane using AWS Local Zones
+## Extend Amazon EKS to AWS Local Zones
 
-A hybrid Amazon EKS cluster using AWS Local Zones is a control plane that spans multiple geographic locations, including Local Zones and AWS Regions. With this configuration, you can deploy applications closer to end-users for low-latency performance while maintaining a centralized management plane for your EKS cluster.
+Amazon EKS data plane can be extended to be deployed in AWS Local Zones. In this deployment mode the Amazon EKS Kubernetes control plane is deployed in Region but the data plane is extended to the AWS Local Zones. With this configuration, you can deploy applications closer to end-users for low-latency performance while maintaining a centralized management plane for your EKS cluster.
 
-To set up a hybrid Amazon EKS cluster using AWS Local Zones, you need to create an Amazon EKS control plane in an AWS Region. You can then add self-managed nodes to the EKS cluster that are located in the Local Zones. These nodes can be used to run Kubernetes pods that are designed to serve requests from users in the Local Zone.
+To get started, you need to create an Amazon EKS control plane in an AWS Region. You can then add self-managed nodes to the Amazon EKS cluster that are located in the Local Zones. These nodes can be used to run Kubernetes pods that are designed to serve requests from users in the Local Zone.
 
 To ensure the pods are highly available, you can use Kubernetes' node affinity and anti-affinity features to ensure that pods are scheduled on nodes in different Local Zones. 
 
-By setting up a hybrid Amazon EKS control plane using AWS Local Zones, you can take advantage of the low-latency benefits of running your application in proximity to end-users while maintaining a centralized management plane for your EKS cluster.
+By extending Amazon EKS data plane can be extended to AWS Local Zones, you can take advantage of the low-latency benefits of running your application in proximity to end-users while maintaining a centralized management plane for your EKS control plane.
 
-When you are looking to understand how to design workloads that are stretched across AWS Region and Local Zones, this project presents a sample architecture. The project also shares complementary CloudFormation that you can consider to improve operational and developer efficiency.
+When you are looking to understand how to design workloads that are stretched across AWS Region and Local Zones, this project presents a sample architecture. The project also shares complementary AWS CloudFormation that you can consider to improve operational and developer efficiency.
 
 <br>
 
@@ -18,7 +18,7 @@ When you are looking to understand how to design workloads that are stretched ac
 
 ## Solution Overview
 
-Hybrid EKS Cluster sample solution enable you to simplify and centralize the management of your infrastructure and applications on AWS Region and on AWS Local Zones. You can extend the AWS cloud operations experience across hybrid and Local Zones for secure and seamless management, compliance, and observability. AWS Hybrid Cloud Solutions enable you to deliver a consistent AWS experience wherever you need it—from the cloud, to the edge.
+This solution enable you to simplify and centralize the management of your infrastructure and applications on AWS Region and on AWS Local Zones. You can extend the AWS cloud operations experience across hybrid and Local Zones for secure and seamless management, compliance, and observability. AWS Hybrid Cloud Solutions enable you to deliver a consistent AWS experience wherever you need it—from the cloud, to the edge.
 
 To create a hybrid EKS cluster with a mix of managed and self-managed nodes, you can use CloudFormation samples to define and deploy the necessary infrastructure. Here's a high-level overview of the solution:
 
@@ -31,20 +31,23 @@ The following diagram shows the high-level architecture, for running a sample we
 
 You will be deploying to sample applications one in the Local Zones and another backup one in the Region
 
-When you are connecting to the Local Zone, the request is served by the ALB in the Local Zone, and the game (sample application) is hosted by Kubernetes pods, running on the self-managed Amazon EC2 nodes. 
+When you are connecting to the Local Zone, the request is served by the [ALB in the Local Zone](https://aws.amazon.com/about-aws/global-infrastructure/localzones/features/), and the game (sample application) is hosted by Kubernetes pods, running on the self-managed Amazon EC2 nodes. 
 
 For the backup site in the Region, there is an ALB and Kubernetes pods running on a managed node group. The backup game is used for High Availability that makes it easy for IT administrators to set up, operate, and scale in the cloud.
 
 ![architecture](/assets/architecture.jpg)
 
 
-## Hybrid EKS Cluster Deployment using Local Zones
+## Amazon EKS Cluster Deployment using Local Zones
 
 For the application deployment, we use the combination of CloudFormation YAML files. We use CloudFormation to create AWS resources such as Amazon Virtual Private Cloud (Amazon VPC), Amazon EKS, Amazon EC2, etc. For the application in Kubernetes, we use the YAML manifest files and 2048 game available in this Solution.
 
 ### Prerequisites
 
-- An AWS account, IAM user `hybrid-eks-user` and role `hybrid-eks-user-role` with Administrator permissions. 
+- An AWS account, IAM user `hybrid-eks-user` and a role `hybrid-eks-user-role` with Administrator permissions. 
+
+>**Note** 
+> It is important to create the Amazon EKS cluster with a [dedicated IAM role](https://aws.github.io/aws-eks-best-practices/security/docs/iam/#create-the-cluster-with-a-dedicated-iam-role) and regularly audit who can assume this role.
 
 - A shell environment. An IDE (Integrated Development Environment) environment such as Visual Studio Code or AWS Cloud9 is recommended.
 
@@ -72,9 +75,7 @@ kubectl version --short --client
 #create an EC2 key pair
 aws ec2 create-key-pair --key-name ws-default-keypair --query 'KeyMaterial' --output text > MyKeyPair.pem
 ```
-- Assume role, using AWS Identity and Access Management (AWS IAM) Role,  For setup details, please refer to the docs [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-role.html).
-
-The following commands help to assume role as you need to configure IAM user `hybrid-eks-user` policy, update role `hybrid-eks-user-role` trust policy then assume role.
+- Assume role, using AWS Identity and Access Management (AWS IAM) Role, the following commands help to assume role as you need to configure IAM user `hybrid-eks-user` policy, update role `hybrid-eks-user-role` trust policy then assume role.
 
 ```bash
 account_id=$(aws sts get-caller-identity --query Account --output text)
@@ -122,7 +123,7 @@ aws iam update-assume-role-policy --role-name hybrid-eks-user-role --policy-docu
 #reconfigure aws cli token for the user `hybrid-eks-user`
 aws configure
 
-# aws configure using the newly created user then assume role
+# assume role
 aws sts assume-role --role-arn "arn:aws:iam::$account_id:role/hybrid-eks-user-role" --role-session-name currentsession
 ```
 
@@ -453,11 +454,11 @@ Then, go to the Cloudformation console and make sure the stacks were deleted. La
 
 ## Conclusion 
 
-Setting up a hybrid Amazon EKS cluster using AWS Local Zones offers many benefits for organizations looking to improve the performance, availability, and resiliency of their containerized applications. With this setup, you can leverage the low-latency access to compute and storage resources in geographically closer locations to your end-users or data sources.
+Extending an Amazon EKS cluster to AWS Local Zones offers many benefits for organizations looking to improve the performance, availability, and resiliency of their containerized applications. With this configurations, you can leverage the low-latency access to compute and storage resources in geographically closer locations to your end-users or data sources.
 
-In this solution, we have covered the essential steps to create a hybrid EKS cluster, including setting up the EKS cluster, launching self-managed node in the Local Zone, joining the node in the Local Zone to the primary cluster, deploying a sample application.
+In this solution, we have covered the essential steps to extend an Amazon EKS cluster to Local Zones, this includes setting up Amazon EKS cluster, launching self-managed node in the Local Zone, joining the node in the Local Zone to the primary cluster, deploying a sample application.
 
-By following these steps, you built a hybrid EKS cluster that is highly available, fault-tolerant, and scalable while maintaining a centralized control plane. With this infrastructure, you can easily deploy and manage containerized applications in multiple locations, improving the user experience and reducing the risk of downtime.
+By following these steps, you leveraged an Amazon EKS cluster that is highly available, fault-tolerant, and scalable while maintaining a centralized control plane. With this infrastructure, you can easily deploy and manage containerized applications in multiple locations, improving the user experience and reducing the risk of downtime.
 
 ## Security
 
