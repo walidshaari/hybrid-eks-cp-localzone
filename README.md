@@ -33,7 +33,7 @@ You will be deploying to sample applications one in the Local Zones and another 
 
 When you are connecting to the Local Zone, the request is served by the [ALB in the Local Zone](https://aws.amazon.com/about-aws/global-infrastructure/localzones/features/), and the game (sample application) is hosted by Kubernetes pods, running on the self-managed Amazon EC2 nodes. 
 
-For the backup site in the Region, there is an ALB and Kubernetes pods running on a managed node group. The backup game is used for High Availability that makes it easy for IT administrators to set up, operate, and scale in the cloud.
+For the backup site in the Region, there is an ALB and Kubernetes pods running on a [managed node group](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html). The backup game is used for High Availability that makes it easy for IT administrators to set up, operate, and scale in the cloud.
 
 ![architecture](/assets/architecture.jpg)
 
