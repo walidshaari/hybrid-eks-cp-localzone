@@ -44,11 +44,9 @@ For the application deployment, we use the combination of CloudFormation YAML fi
 
 ### Prerequisites
 
-- An AWS account, IAM user and role with Administrator permissions. 
+- An AWS account, IAM user `hybrid-eks-user` and role `hybrid-eks-user-role` with Administrator permissions. 
 
-- A shell environment. An IDE (Integrated Development Environment) environment such as Visual Studio Code or AWS Cloud9 is recommended. 
-
-![sts](/assets/sts.jpeg)
+- A shell environment. An IDE (Integrated Development Environment) environment such as Visual Studio Code or AWS Cloud9 is recommended.
 
 - Installation of the latest version AWS Command Line Interface (AWS CLI) (v2 recommended), kubectl, eksctl, 
 
@@ -57,8 +55,6 @@ For the application deployment, we use the combination of CloudFormation YAML fi
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 sudo ./aws/install
-#python3 -m pip install aws-cli
-#pip install awscli
 
 # Download and extract the latest release of eksctl with the following
 curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
@@ -77,6 +73,58 @@ kubectl version --short --client
 aws ec2 create-key-pair --key-name ws-default-keypair --query 'KeyMaterial' --output text > MyKeyPair.pem
 ```
 - Assume role, using AWS Identity and Access Management (AWS IAM) Role,  For setup details, please refer to the docs [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-role.html).
+
+The following commands help to assume role as you need to configure IAM user `hybrid-eks-user` policy, update role `hybrid-eks-user-role` trust policy then assume role.
+
+```bash
+account_id=$(aws sts get-caller-identity --query Account --output text)
+echo $account_id
+#create user policy enabling the user to assumer role 
+cat >user-policy.json <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "iam:ListRoles",
+          "sts:AssumeRole"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }
+EOF
+
+#create policy
+aws iam create-policy --policy-name hybrid-eks-policy --policy-document file://user-policy.json
+
+#attach policy 
+aws iam attach-user-policy --user-name hybrid-eks-user --policy-arn "arn:aws:iam::$account_id:policy/hybrid-eks-policy"
+
+#load-balancer-role-trust-policy 
+cat >eks-role-trust-policy.json <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "$account_id"
+      },
+      "Action": "sts:AssumeRole"
+    }
+}
+EOF
+
+#create hybrid-eks-user-role role
+aws iam update-assume-role-policy --role-name hybrid-eks-user-role --assume-role-policy-document file://eks-role-trust-policy.json
+
+#attach the policy to the role
+#aws iam attach-role-policy --role-name hybrid-eks-user-role --policy-arn "arn:aws:iam::$account_id:policy/hybrid-eks-policy"
+
+# aws configure using the newly created user then assume role
+aws sts assume-role --role-arn "arn:aws:iam::$account_id:role/hybrid-eks-user-role" --role-session-name currentsession
+```
 
 - Opt-in the Local Zone that you would like to run your workload in `us-west-2-lax-1a`.
 
