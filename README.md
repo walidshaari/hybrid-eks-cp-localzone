@@ -116,17 +116,26 @@ cat >eks-role-trust-policy.json <<EOF
 }
 EOF
 
-#create hybrid-eks-user-role role
-aws iam update-assume-role-policy --role-name hybrid-eks-user-role --assume-role-policy-document file://eks-role-trust-policy.json
+#update hybrid-eks-user-role role assume role policy 
+aws iam update-assume-role-policy --role-name hybrid-eks-user-role --policy-document file://eks-role-trust-policy.json
 
-#attach the policy to the role
-#aws iam attach-role-policy --role-name hybrid-eks-user-role --policy-arn "arn:aws:iam::$account_id:policy/hybrid-eks-policy"
+#reconfigure aws cli token for the user `hybrid-eks-user`
+aws configure
 
 # aws configure using the newly created user then assume role
 aws sts assume-role --role-arn "arn:aws:iam::$account_id:role/hybrid-eks-user-role" --role-session-name currentsession
 ```
 
-- Opt-in the Local Zone that you would like to run your workload in `us-west-2-lax-1a`.
+- Replace export values from the assume role command results 
+
+```bash
+#replace export values from the assume role command results 
+export AWS_ACCESS_KEY_ID=<AAAA>
+export AWS_SECRET_ACCESS_KEY=<BBBB>
+export AWS_SESSION_TOKEN=<CCCC>
+```
+
+- Opt-in for `us-west-2-lax-1a` Local Zone that this sample will create and run some workloads in. Please refer to the docs [here](https://docs.aws.amazon.com/local-zones/latest/ug/getting-started.html#getting-started-find-local-zone) to enable LAX Local Zone, Region `us-west-2`.
 
 ### Walkthrough
 
@@ -136,7 +145,7 @@ aws sts assume-role --role-arn "arn:aws:iam::$account_id:role/hybrid-eks-user-ro
 
 ```bash
  aws cloudformation create-stack \
-  --stack-name stack1 \
+  --stack-name eks-cp-cfn-stack \
   --template-body file://eks-cluster.yaml \
   --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
   --parameters ParameterKey=EKSClusterName,ParameterValue=eks-cluster ParameterKey=NumWorkerNodes,ParameterValue=2  ParameterKey=KeyPairName,ParameterValue=ws-default-keypair
@@ -162,17 +171,17 @@ aws eks update-kubeconfig \
 #Copy and paste the Amazon IAM Authenticator configuration map details to aws-auth-cm.yaml 
 kubectl get -n kube-system configmap/aws-auth -o yaml  > aws-auth-cm.yaml
 #Fetch required resources generated through the previous step
-ClusterControlPlaneSecurityGroup=$(aws cloudformation describe-stacks --stack-name "stack1" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`EKSClusterSG`].OutputValue' --output text)
- KeyName=$(aws cloudformation describe-stacks --stack-name "stack1" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`KeyPair`].OutputValue' --output text)
- Subnets=$(aws cloudformation describe-stacks --stack-name "stack1" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`LZPrivateSubnetId`].OutputValue' --output text)
- VpcId=$(aws cloudformation describe-stacks --stack-name "stack1" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`VpcId`].OutputValue' --output text)
+ClusterControlPlaneSecurityGroup=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`EKSClusterSG`].OutputValue' --output text)
+ KeyName=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`KeyPair`].OutputValue' --output text)
+ Subnets=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`LZPrivateSubnetId`].OutputValue' --output text)
+ VpcId=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`VpcId`].OutputValue' --output text)
 ```
 
 - Create the self-managed nodes
 
 ```bash
  aws cloudformation create-stack \
-  --stack-name stack2 \
+  --stack-name eks-lz-nodes-cfn-stack \
   --template-body file://eks-selfmanaged-node.yaml \
   --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
   --parameters ParameterKey=ClusterName,ParameterValue=eks-cluster ParameterKey=ClusterControlPlaneSecurityGroup,ParameterValue=$ClusterControlPlaneSecurityGroup  ParameterKey=KeyName,ParameterValue=$KeyName ParameterKey=Subnets,ParameterValue=$Subnets ParameterKey=VpcId,ParameterValue=$VpcId ParameterKey=NodeGroupName,ParameterValue=eks-selfmanaged-groupnode ParameterKey=NodeImageId,ParameterValue=ami-0b149b4c68ab69dce
@@ -188,7 +197,7 @@ ClusterControlPlaneSecurityGroup=$(aws cloudformation describe-stacks --stack-na
 1. Get the self-manged nodes role.
 
 ```bash
- echo $(aws cloudformation describe-stacks --stack-name "stack2" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeInstanceRole`].OutputValue' --output text)
+ echo $(aws cloudformation describe-stacks --stack-name "eks-lz-nodes-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeInstanceRole`].OutputValue' --output text)
 ```
 
  ![role](/assets/role.jpeg)
@@ -226,8 +235,8 @@ ClusterControlPlaneSecurityGroup=$(aws cloudformation describe-stacks --stack-na
  1. Enable the communication between both managed nodes in the Region and self-managed nodes in the Local Zone.
 
 ```bash
-ManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "stack1" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`ManagedWorkerNodesSecurityGroup`].OutputValue' --output text)
-SelfManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "stack2" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeSecurityGroup`].OutputValue' --output text)
+ManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`ManagedWorkerNodesSecurityGroup`].OutputValue' --output text)
+SelfManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "eks-lz-nodes-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeSecurityGroup`].OutputValue' --output text)
 
 aws ec2 authorize-security-group-ingress \
     --group-id $ManagedWorkerNodesSecurityGroup \
@@ -303,7 +312,7 @@ curl -Lo v2_4_7_ingclass.yaml https://github.com/kubernetes-sigs/aws-load-balanc
    * Retrieve the `VpcId` created in previous steps.
 
 ```bash
- VpcId=$(aws cloudformation describe-stacks --stack-name "stack1" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`VpcId`].OutputValue' --output text)
+ VpcId=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`VpcId`].OutputValue' --output text)
  echo $VpcId
 ```
 
@@ -357,7 +366,7 @@ aws-load-balancer-controller   1/1     1            1          84s
       
 ```bash
  #deploying to pods in a cluster in the Region (public)
- echo $(aws cloudformation describe-stacks --stack-name "stack1" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`LZPublicSubnetId`].OutputValue' --output text)
+ echo $(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`LZPublicSubnetId`].OutputValue' --output text)
 ```
 
  3. Open 2048_lz file and update tag **"alb.ingress.kubernetes.io/subnets"** with subnet captured from previous step, **save** file, then deploy the applications using the following command
@@ -410,7 +419,7 @@ Replace <aws-loadbalancer-controller-pod> with the full name of the AWS Load Bal
 
 To terminate the resources that we created in this sample, as the following:
 
-- Detach polices from created roles **stack2-NodeInstanceRole**-XXXXXX, **stack1-WorkerNodesRole**-YYYYYY and **stack1-ControlPlaneRole**-ZZZZZZ
+- Detach polices from created roles **eks-lz-nodes-cfn-stack-NodeInstanceRole**-XXXXXX, **eks-cp-cfn-stack-WorkerNodesRole**-YYYYYY and **eks-cp-cfn-stack-ControlPlaneRole**-ZZZZZZ
 
 - Run the following
 ```bash
@@ -419,10 +428,10 @@ kubectl delete -f 2048_backup.yaml
 kubectl delete -f 2048_lz.yaml
 kubectl delete -f v2_4_7_ingclass.yaml
 
-# manually detach polices from created roles stack2-NodeInstanceRole-<XXXXX> and stack1-ControlPlaneRole-<XXXYYY>
+# manually detach polices from created roles eks-lz-nodes-cfn-stack-NodeInstanceRole-<XXXXX> and eks-cp-cfn-stack-ControlPlaneRole-<XXXYYY>
 
-ManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "stack1" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`ManagedWorkerNodesSecurityGroup`].OutputValue' --output text)
-SelfManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "stack2" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeSecurityGroup`].OutputValue' --output text)
+ManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`ManagedWorkerNodesSecurityGroup`].OutputValue' --output text)
+SelfManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "eks-lz-nodes-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeSecurityGroup`].OutputValue' --output text)
 
 aws ec2 revoke-security-group-ingress \
     --group-id $ManagedWorkerNodesSecurityGroup \
@@ -435,8 +444,8 @@ aws ec2 revoke-security-group-ingress \
     --port -1 \
     --source-group $ManagedWorkerNodesSecurityGroup
 
-aws cloudformation delete-stack --stack-name stack2
-aws cloudformation delete-stack --stack-name stack1
+aws cloudformation delete-stack --stack-name eks-lz-nodes-cfn-stack
+aws cloudformation delete-stack --stack-name eks-cp-cfn-stack
 
 ```
 
