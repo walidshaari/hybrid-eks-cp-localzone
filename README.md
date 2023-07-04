@@ -402,7 +402,7 @@ If you encounter a situation where you are unable to obtain an address for a tes
 
 Replace <aws-loadbalancer-controller-pod> with the full name of the AWS Load Balancer Controller pod.
 
-#### Step 5: Route 53 **Optional**
+#### Optional Step 5: Route 53 
 
 Assuming you have a public domain defined under Amazon Route 53 [Hosted Zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/CreatingHostedZone.html), we have a complementary CloudFormation stack that can help you create [failover alias records values](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resource-record-sets-values-failover.html), configure Amazon Route 53 [health checks](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html), and set up DNS failover.
 
