@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  HostedZoneId:
+    Type: String
+    Description: The ID of the existing Route 53 hosted zone.
+  DomainName:
+    Type: String
+    Description: The domain name for the Route 53 configuration.
+  PrimaryALBDNS:
+    Type: String
+    Description: The DNS name of the primary ALB.
+  SecondaryALBDNS:
+    Type: String
+    Description: The DNS name of the secondary ALB.
+Resources:
+  FailoverRecordSet:
+    Type: "AWS::Route53::RecordSetGroup"
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      RecordSets:
+        - Name: !Sub "game.${DomainName}"
+          Type: "CNAME"
+          SetIdentifier: "LZ"
+          HealthCheckId: !Ref LZHealthCheck
+          Failover: "PRIMARY"
+          TTL: "60"
+          ResourceRecords:
+            - !Ref PrimaryALBDNS
+        - Name: !Sub "game.${DomainName}"
+          Type: "CNAME"
+          SetIdentifier: "Backup"
+          HealthCheckId: !Ref BackupHealthCheck
+          Failover: "SECONDARY"
+          TTL: "60"
+          ResourceRecords:
+            - !Ref SecondaryALBDNS
+  LZHealthCheck:
+    Type: "AWS::Route53::HealthCheck"
+    Properties:
+      HealthCheckConfig:
+        Type: "HTTP"
+        FullyQualifiedDomainName: !Ref PrimaryALBDNS
+        ResourcePath: "/"
+        FailureThreshold: 3
+        RequestInterval: 30
+  BackupHealthCheck:
+    Type: "AWS::Route53::HealthCheck"
+    Properties:
+      HealthCheckConfig:
+        Type: "HTTP"
+        FullyQualifiedDomainName: !Ref SecondaryALBDNS
+        ResourcePath: "/"
+        FailureThreshold: 3
+        RequestInterval: 30

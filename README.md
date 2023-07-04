@@ -35,7 +35,7 @@ When you are connecting to the Local Zone, the request is served by the [ALB in 
 
 For the backup site in the Region, there is an ALB and Kubernetes pods running on a [managed node group](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html). The backup game is used for High Availability that makes it easy for IT administrators to set up, operate, and scale in the cloud.
 
-![architecture](/assets/architecture.jpg)
+![architecture](/assets/arch2.jpg)
 
 
 ## Amazon EKS Cluster Deployment using Local Zones
@@ -50,6 +50,9 @@ For the application deployment, we use the combination of CloudFormation YAML fi
 > It is important to create the Amazon EKS cluster with a [dedicated IAM role](https://aws.github.io/aws-eks-best-practices/security/docs/iam/#create-the-cluster-with-a-dedicated-iam-role) and regularly audit who can assume this role.
 
 - A shell environment. An IDE (Integrated Development Environment) environment such as Visual Studio Code or AWS Cloud9 is recommended.
+
+>**Note** 
+>Important note for developers: All commands mentioned in the instructions were tested using Cloud9 using the Amazon Linux 2 as a platform. If you encounter any issues while working with a different operating system, please verify the applicability of the command to your specific operating system. Some commands may have variations or different syntax depending on the OS in use. Ensure compatibility and make any necessary adjustments before executing the commands on your system. 
 
 - Installation of the latest version AWS Command Line Interface (AWS CLI) (v2 recommended), kubectl, eksctl, 
 
@@ -72,8 +75,8 @@ mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$HOME/bin:$P
 echo 'export PATH=$PATH:$HOME/bin' >~/.bash_profile
 kubectl version --short --client
 
-#create an EC2 key pair
-aws ec2 create-key-pair --key-name ws-default-keypair --query 'KeyMaterial' --output text > MyKeyPair.pem
+#create an EC2 key pair -Optional, if you decided to use existing one please make sure to update the CloudFormation parameter KeyPairName-
+aws ec2 create-key-pair --key-name eks-keypair --region us-west-2 --query 'KeyMaterial' --output text > MyKeyPair.pem
 ```
 - Assume role, using AWS Identity and Access Management (AWS IAM) Role, the following commands help to assume role as you need to configure IAM user `hybrid-eks-user` policy, update role `hybrid-eks-user-role` trust policy then assume role.
 
@@ -149,7 +152,7 @@ export AWS_SESSION_TOKEN=<CCCC>
   --stack-name eks-cp-cfn-stack \
   --template-body file://eks-cluster.yaml \
   --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-  --parameters ParameterKey=EKSClusterName,ParameterValue=eks-cluster ParameterKey=NumWorkerNodes,ParameterValue=2  ParameterKey=KeyPairName,ParameterValue=ws-default-keypair
+  --parameters ParameterKey=EKSClusterName,ParameterValue=eks-cluster ParameterKey=NumWorkerNodes,ParameterValue=2  ParameterKey=KeyPairName,ParameterValue=eks-keypair ParameterKey=Region,ParameterValue=us-west-2 ParameterKey=LocalZones,ParameterValue=us-west-2-lax-1a
 ```
 
 >**Note**
@@ -233,25 +236,7 @@ ClusterControlPlaneSecurityGroup=$(aws cloudformation describe-stacks --stack-na
 
 #### Step 3: Installing the AWS Load Balancer Controller add-on
 
- 1. Enable the communication between both managed nodes in the Region and self-managed nodes in the Local Zone.
-
-```bash
-ManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`ManagedWorkerNodesSecurityGroup`].OutputValue' --output text)
-SelfManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "eks-lz-nodes-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeSecurityGroup`].OutputValue' --output text)
-
-aws ec2 authorize-security-group-ingress \
-    --group-id $ManagedWorkerNodesSecurityGroup \
-    --protocol -1 \
-    --port -1 \
-    --source-group $SelfManagedWorkerNodesSecurityGroup
-aws ec2 authorize-security-group-ingress \
-    --group-id $SelfManagedWorkerNodesSecurityGroup \
-    --protocol -1 \
-    --port -1 \
-    --source-group $ManagedWorkerNodesSecurityGroup
-```
-
- 2. Creating an AWS Identity and Access Management (IAM) OpenID Connect (OIDC) provider for your cluster.
+ 1. Creating an AWS Identity and Access Management (IAM) OpenID Connect (OIDC) provider for your cluster.
 
    Amazon EKS supports using OpenID Connect (OIDC) identity providers as a method to authenticate users to your cluster, further [details](https://docs.aws.amazon.com/eks/latest/userguide/authenticate-oidc-identity-provider.html)
 
@@ -268,7 +253,7 @@ aws ec2 authorize-security-group-ingress \
  eksctl utils associate-iam-oidc-provider --cluster eks-cluster --approve
 ```
 
- 3. Deploy the AWS Load Balancer Controller to an Amazon EKS cluster
+ 2. Deploy the AWS Load Balancer Controller to an Amazon EKS cluster
 
    - Create an IAM policy using the policy downloaded in the previous step.
 
@@ -389,8 +374,9 @@ aws-load-balancer-controller   1/1     1            1          84s
  The example output is as follows.
 
 >```bash
->NAME           CLASS    HOSTS   ADDRESS                                                                   PORTS   AGE
->ingress-2048   <none>   *       k8s-game2048-ingress2-xxxxxxxxxx-yyyyyyyyyy.region-code.elb.amazonaws.com   80      2m32s
+>NAME                  CLASS   HOSTS   ADDRESS                                                                  PORTS   AGE
+>ingress-2048-backup   alb     *       k8s-game2048-ingress2-XXXXX.us-west-2.elb.amazonaws.com   80      7m
+>ingress-2048-lz   alb     *       k8s-game2048-ingress2-YYYYYY.us-west-2.elb.amazonaws.com   80      2m
 >```
 
 
@@ -405,7 +391,7 @@ aws-load-balancer-controller   1/1     1            1          84s
 >
 >- Installing the AWS Load Balancer Controller add-on further [details](https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html)
 
-## Troubleshooting
+#### Troubleshooting
 
 If you encounter a situation where you are unable to obtain an address for a test games, it may be helpful to troubleshoot the AWS Load Balancer Controller. One possible solution is to delete the controller using the full pod name. To do this, you can run the following command: 
 
@@ -416,38 +402,41 @@ If you encounter a situation where you are unable to obtain an address for a tes
 
 Replace <aws-loadbalancer-controller-pod> with the full name of the AWS Load Balancer Controller pod.
 
+#### Step 5: Route 53 **Optional**
+
+Assuming you have a public domain defined under Amazon Route 53 [Hosted Zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/CreatingHostedZone.html), we have a complementary CloudFormation stack that can help you create [failover alias records values](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resource-record-sets-values-failover.html), configure Amazon Route 53 [health checks](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html), and set up DNS failover.
+
+To configure the CloudFormation stack, we require some input details. Firstly, please provide the Hosted Zone ID for the domain name. This ID represents the domain for which you have administrative control and can manage DNS records. Once we have the Hosted Zone ID, we can proceed with the configuration.
+
+In addition, we need you to input the LZ DNS name. This should correspond to the ingress resource address we created in the previous step, specifically for `get ingress/ingress-2048-lz`. The LZ DNS name will be used for the primary failover record set. Please ensure to include a period (.) at the end of the LZ DNS name to make it fully qualified.
+
+Similarly, we need the backup DNS name. This should correspond to the ingress resource address we created in the previous step for `ingress/ingress-2048-backup`. The backup DNS name will serve as the backup failover record set. Remember to include a period (.) at the end of the backup DNS name as well.
+
+By providing these inputs accurately, we can proceed with creating the CloudFormation stack to set up the failover alias records, configure health checks, and enable DNS failover for your domain.
+
+For example, have a look at the following input params:
+
+![Rout53](/assets/route53.jpeg)
+
 ## Clean up
 
 To terminate the resources that we created in this sample, as the following:
 
 - Detach polices from created roles **eks-lz-nodes-cfn-stack-NodeInstanceRole**-XXXXXX, **eks-cp-cfn-stack-WorkerNodesRole**-YYYYYY and **eks-cp-cfn-stack-ControlPlaneRole**-ZZZZZZ
 
-- Run the following
+- Run the following: 
+
 ```bash
 
 kubectl delete -f 2048_backup.yaml
 kubectl delete -f 2048_lz.yaml
 kubectl delete -f v2_4_7_ingclass.yaml
 
-# manually detach polices from created roles eks-lz-nodes-cfn-stack-NodeInstanceRole-<XXXXX> and eks-cp-cfn-stack-ControlPlaneRole-<XXXYYY>
-
-ManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`ManagedWorkerNodesSecurityGroup`].OutputValue' --output text)
-SelfManagedWorkerNodesSecurityGroup=$(aws cloudformation describe-stacks --stack-name "eks-lz-nodes-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeSecurityGroup`].OutputValue' --output text)
-
-aws ec2 revoke-security-group-ingress \
-    --group-id $ManagedWorkerNodesSecurityGroup \
-    --protocol -1 \
-    --port -1 \
-    --source-group $SelfManagedWorkerNodesSecurityGroup
-aws ec2 revoke-security-group-ingress \
-    --group-id $SelfManagedWorkerNodesSecurityGroup \
-    --protocol -1 \
-    --port -1 \
-    --source-group $ManagedWorkerNodesSecurityGroup
-
+aws cloudformation delete-stack --stack-name eksctl-eks-cluster-addon-iamserviceaccount-kube-system-aws-load-balancer-controller
 aws cloudformation delete-stack --stack-name eks-lz-nodes-cfn-stack
 aws cloudformation delete-stack --stack-name eks-cp-cfn-stack
 
+#delete the Route53 stack if you went through this step
 ```
 
 Then, go to the Cloudformation console and make sure the stacks were deleted. Lastly, delete created user, policy and role assumed.
@@ -456,7 +445,7 @@ Then, go to the Cloudformation console and make sure the stacks were deleted. La
 
 Extending an Amazon EKS cluster to AWS Local Zones offers many benefits for organizations looking to improve the performance, availability, and resiliency of their containerized applications. With this configurations, you can leverage the low-latency access to compute and storage resources in geographically closer locations to your end-users or data sources.
 
-In this solution, we have covered the essential steps to extend an Amazon EKS cluster to Local Zones, this includes setting up Amazon EKS cluster, launching self-managed node in the Local Zone, joining the node in the Local Zone to the primary cluster, deploying a sample application.
+In this solution, we have covered the essential steps to extend an Amazon EKS cluster to Local Zones, this includes setting up Amazon EKS cluster, launching self-managed node in the Local Zone, joining the node in the Local Zone to the EKS cluster and deploying a sample application.
 
 By following these steps, you leveraged an Amazon EKS cluster that is highly available, fault-tolerant, and scalable while maintaining a centralized control plane. With this infrastructure, you can easily deploy and manage containerized applications in multiple locations, improving the user experience and reducing the risk of downtime.
 
