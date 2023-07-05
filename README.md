@@ -208,41 +208,41 @@ VpcId=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --reg
 
 - Enable self-managed nodes to join your cluster, as the following: 
 
-  1. Get the self-manged nodes role.
+1. Get the self-manged nodes role.
 
-  ```bash
-  echo $(aws cloudformation describe-stacks --stack-name "eks-lz-nodes-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeInstanceRole`].OutputValue' --output text)
-  ```
+```bash
+ echo $(aws cloudformation describe-stacks --stack-name "eks-lz-nodes-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeInstanceRole`].OutputValue' --output text)
+```
 
-  ![role](/assets/role.jpeg)
+ ![role](/assets/role.jpeg)
 
-  2. Open the aws-auth-cm.yaml file in the left panel of your Cloud9 IDE.
-  3. Copy the existing `groups` node and paste it as an additional tag.
-  4. Set the `rolearn` of the newly added group to the value that you recorded in the previous procedure. Be sure to change the role ARN and **avoid any alignment** issues.
+2. Open the aws-auth-cm.yaml file in the left panel of your Cloud9 IDE.
+3. Copy the existing `groups` node and paste it as an additional tag.
+4. Set the `rolearn` of the newly added group to the value that you recorded in the previous procedure. Be sure to change the role ARN and **avoid any alignment** issues.
 
-  ![aws-auth-file](/assets/authyaml.jpeg)
+![aws-auth-file](/assets/authyaml.jpeg)
 
-  5. Verify that both groups have the same **alignment** and **save** the file before proceeding to the next step.
-  6. Apply the configuration using the appropriate command. This process may take a few minutes to complete.
+5. Verify that both groups have the same **alignment** and **save** the file before proceeding to the next step.
+6. Apply the configuration using the appropriate command. This process may take a few minutes to complete.
 
-  ```bash
-  kubectl apply -f aws-auth-cm.yaml
-  ```
+```bash
+ kubectl apply -f aws-auth-cm.yaml
+```
 
-  ![auth](/assets/join-self-managed.jpeg) 
+ ![auth](/assets/join-self-managed.jpeg) 
 
-  7. Watch the status of your nodes and wait for them to reach the Ready status.
+7. Watch the status of your nodes and wait for them to reach the Ready status.
 
-  ```bash
-  kubectl get nodes --watch
-  ```
+```bash
+ kubectl get nodes --watch
+```
 
-  > To stop monitoring the status of nodes in a Kubernetes cluster using the "watch" command, you can press "Ctrl + C" when you observe that new node is in the "Ready" state. This will terminate the command and exit the watch mode.
+> To stop monitoring the status of nodes in a Kubernetes cluster using the "watch" command, you can press "Ctrl + C" when you observe that new node is in the "Ready" state. This will terminate the command and exit the watch mode.
 
-  ![auth2](/assets/joined-self-managed.jpeg) 
+![auth2](/assets/joined-self-managed.jpeg) 
 
-  >**Warning**
-  > If you receive any authorization or resource type errors, see [Unauthorized or access denied (kubectl)](https://docs.amazonaws.cn/en_us/eks/latest/userguide/troubleshooting.html#unauthorized) and [further references](https://docs.amazonaws.cn/en_us/eks/latest/userguide/eks-outposts-self-managed-nodes.html) in the troubleshooting topic.
+>**Warning**
+> If you receive any authorization or resource type errors, see [Unauthorized or access denied (kubectl)](https://docs.amazonaws.cn/en_us/eks/latest/userguide/troubleshooting.html#unauthorized) and [further references](https://docs.amazonaws.cn/en_us/eks/latest/userguide/eks-outposts-self-managed-nodes.html) in the troubleshooting topic.
 
 #### Step 3: Installing the AWS Load Balancer Controller add-on
 
