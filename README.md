@@ -4,7 +4,7 @@ Amazon EKS data plane can be extended to be deployed in AWS Local Zones. In this
 
 To get started, you need to create an Amazon EKS control plane in an AWS Region. You can then add self-managed nodes to the Amazon EKS cluster that are located in the Local Zones. These nodes can be used to run Kubernetes pods that are designed to serve requests from users in the Local Zone.
 
-To ensure the pods are highly available, you can use Kubernetes' node affinity and anti-affinity features to ensure that pods are scheduled on nodes in different Local Zones. 
+To ensure the pods are highly available, you can use Kubernetes' node affinity and anti-affinity features to ensure that pods are scheduled on nodes in either the Localzone or region Availability Zones AZ. 
 
 By extending Amazon EKS data plane can be extended to AWS Local Zones, you can take advantage of the low-latency benefits of running your application in proximity to end-users while maintaining a centralized management plane for your EKS control plane.
 
