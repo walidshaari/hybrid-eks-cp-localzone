@@ -407,12 +407,15 @@ If you encounter a situation where you are unable to obtain an address for a tes
 
 >```bash
 >kubectl get pods -o wide -n kube-system
->kubectl delete pods <aws-loadbalancer-controller-pod> -n kube-system
 >```
 
 Replace <aws-loadbalancer-controller-pod> with the full name of the AWS Load Balancer Controller pod.
 
-#### Optional Step 5: Route 53 
+>```bash
+>kubectl delete pods <aws-loadbalancer-controller-pod> -n kube-system
+>`
+
+#### Optional Step 5: Configure Route 53 Failover for high availability
 
 Assuming you have a public domain defined under Amazon Route 53 [Hosted Zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/CreatingHostedZone.html), we have a complementary CloudFormation stack that can help you create [failover alias records values](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resource-record-sets-values-failover.html), configure Amazon Route 53 [health checks](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html), and set up DNS failover.
 
