@@ -52,3 +52,7 @@ Resources:
         ResourcePath: "/"
         FailureThreshold: 3
         RequestInterval: 30
+Outputs:
+  GameName:
+    Description: "Domain"
+    Value: !Sub "game.${DomainName}"

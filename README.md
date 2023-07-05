@@ -417,7 +417,7 @@ Replace <aws-loadbalancer-controller-pod> with the full name of the AWS Load Bal
 
 #### Optional Step 5: Configure Route 53 Failover for high availability
 
-Assuming you have a public domain defined under Amazon Route 53 [Hosted Zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/CreatingHostedZone.html), we have a complementary CloudFormation stack that can help you create [failover alias records values](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resource-record-sets-values-failover.html), configure Amazon Route 53 [health checks](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html), and set up DNS failover.
+Assuming you have a public domain defined under Amazon Route 53 [hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/CreatingHostedZone.html), we have a complementary CloudFormation stack that can help you create [failover alias records values](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resource-record-sets-values-failover.html), configure Amazon Route 53 [health checks](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html), and set up DNS failover.
 
 To configure the CloudFormation stack, we require some input details. Firstly, please provide the Hosted Zone ID for the domain name. This ID represents the domain for which you have administrative control and can manage DNS records. Once we have the Hosted Zone ID, we can proceed with the configuration.
 
