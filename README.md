@@ -42,6 +42,11 @@ For the backup site in the Region, there is an ALB and Kubernetes pods running o
 
 For the application deployment, we use the combination of CloudFormation YAML files. We use CloudFormation to create AWS resources such as Amazon Virtual Private Cloud (Amazon VPC), Amazon EKS, Amazon EC2, etc. For the application in Kubernetes, we use the YAML manifest files and 2048 game available in this Solution.
 
+
+>**Note** 
+>Important note for developers: All commands mentioned in the instructions were tested using Cloud9 using the Amazon Linux 2 as a platform. If you encounter any issues while working with a different operating system, please verify the applicability of the command to your specific operating system. Some commands may have variations or different syntax depending on the OS in use. Ensure compatibility and make any necessary adjustments before executing the commands on your system. 
+
+
 ### Prerequisites
 
 - An AWS account, IAM user `hybrid-eks-user` and a role `hybrid-eks-user-role` with Administrator permissions. 
@@ -51,10 +56,7 @@ For the application deployment, we use the combination of CloudFormation YAML fi
 
 - A shell environment. An IDE (Integrated Development Environment) environment such as Visual Studio Code or AWS Cloud9 is recommended.
 
->**Note** 
->Important note for developers: All commands mentioned in the instructions were tested using Cloud9 using the Amazon Linux 2 as a platform. If you encounter any issues while working with a different operating system, please verify the applicability of the command to your specific operating system. Some commands may have variations or different syntax depending on the OS in use. Ensure compatibility and make any necessary adjustments before executing the commands on your system. 
-
-- Installation of the latest version AWS Command Line Interface (AWS CLI) (v2 recommended), kubectl, eksctl, 
+- Installation of the latest version AWS Command Line Interface (AWS CLI) (v2 recommended), kubectl, eksctl, and EC2 Key Pair
 
 ```bash
 #Download and extract the latest release of awscli with the following
@@ -75,10 +77,10 @@ mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$HOME/bin:$P
 echo 'export PATH=$PATH:$HOME/bin' >~/.bash_profile
 kubectl version --short --client
 
-#create an EC2 key pair -Optional, if you decided to use existing one please make sure to update the CloudFormation parameter KeyPairName-
+#create an EC2 key pair [optional], if you decided to use existing one please make sure to update the CloudFormation parameter KeyPairName-
 aws ec2 create-key-pair --key-name eks-keypair --region us-west-2 --query 'KeyMaterial' --output text > MyKeyPair.pem
 ```
-- Assume role, using AWS Identity and Access Management (AWS IAM) Role, the following commands help to assume role as you need to configure IAM user `hybrid-eks-user` policy, update role `hybrid-eks-user-role` trust policy then assume role.
+- To assume role, using AWS Identity and Access Management (AWS IAM) Role, the following commands help to assume role as you need to configure IAM user `hybrid-eks-user` policy, update role `hybrid-eks-user-role` trust policy then assume role.
 
 ```bash
 account_id=$(aws sts get-caller-identity --query Account --output text)
@@ -125,7 +127,11 @@ aws iam update-assume-role-policy --role-name hybrid-eks-user-role --policy-docu
 
 #reconfigure aws cli token for the user `hybrid-eks-user`
 aws configure
+```
 
+- Assume role
+
+```bash
 # assume role
 aws sts assume-role --role-arn "arn:aws:iam::$account_id:role/hybrid-eks-user-role" --role-session-name currentsession
 ```
@@ -133,6 +139,7 @@ aws sts assume-role --role-arn "arn:aws:iam::$account_id:role/hybrid-eks-user-ro
 - Replace export values from the assume role command results 
 
 ```bash
+
 #replace export values from the assume role command results 
 export AWS_ACCESS_KEY_ID=<AAAA>
 export AWS_SECRET_ACCESS_KEY=<BBBB>
@@ -155,9 +162,7 @@ export AWS_SESSION_TOKEN=<CCCC>
   --parameters ParameterKey=EKSClusterName,ParameterValue=eks-cluster ParameterKey=NumWorkerNodes,ParameterValue=2  ParameterKey=KeyPairName,ParameterValue=eks-keypair ParameterKey=Region,ParameterValue=us-west-2 ParameterKey=LocalZones,ParameterValue=us-west-2-lax-1a
 ```
 
->**Note**
->  When you observe the `StackId` prompt appearing in your terminal, it indicates that the execution of your CloudFormation has been initiated successfully. This prompt serves as a confirmation that your CloudFormation stack has started to execute.
-
+> When you observe the `StackId` prompt appearing in your terminal, it indicates that the execution of your CloudFormation has been initiated successfully. This prompt serves as a confirmation that your CloudFormation stack has started to execute.
 
 
 - Wait for 10-15 mins for the CloudFormation to create all resources "CREATE_COMPLETE" status for the stack.
@@ -172,13 +177,18 @@ export AWS_SESSION_TOKEN=<CCCC>
 aws eks update-kubeconfig \
             --region us-west-2 \
             --name eks-cluster 
+
 #Copy and paste the Amazon IAM Authenticator configuration map details to aws-auth-cm.yaml 
 kubectl get -n kube-system configmap/aws-auth -o yaml  > aws-auth-cm.yaml
+
 #Fetch required resources generated through the previous step
 ClusterControlPlaneSecurityGroup=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`EKSClusterSG`].OutputValue' --output text)
- KeyName=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`KeyPair`].OutputValue' --output text)
- Subnets=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`LZPrivateSubnetId`].OutputValue' --output text)
- VpcId=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`VpcId`].OutputValue' --output text)
+
+KeyName=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`KeyPair`].OutputValue' --output text)
+
+Subnets=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`LZPrivateSubnetId`].OutputValue' --output text)
+
+VpcId=$(aws cloudformation describe-stacks --stack-name "eks-cp-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`VpcId`].OutputValue' --output text)
 ```
 
 - Create the self-managed nodes
@@ -196,43 +206,43 @@ ClusterControlPlaneSecurityGroup=$(aws cloudformation describe-stacks --stack-na
 
 - Wait for 5 mins for the CloudFormation to create all resources "CREATE_COMPLETE" status for the stack.
 
-- Enable self-managed nodes to join your cluster
+- Enable self-managed nodes to join your cluster, as the following: 
 
-1. Get the self-manged nodes role.
+      1. Get the self-manged nodes role.
 
-```bash
- echo $(aws cloudformation describe-stacks --stack-name "eks-lz-nodes-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeInstanceRole`].OutputValue' --output text)
-```
+      ```bash
+      echo $(aws cloudformation describe-stacks --stack-name "eks-lz-nodes-cfn-stack" --region "us-west-2" --query 'Stacks[0].Outputs[?OutputKey==`NodeInstanceRole`].OutputValue' --output text)
+      ```
 
- ![role](/assets/role.jpeg)
+      ![role](/assets/role.jpeg)
 
-2. Open the aws-auth-cm.yaml file in the left panel of your Cloud9 IDE.
-3. Copy the existing `groups` node and paste it as an additional tag.
-4. Set the `rolearn` of the newly added group to the value that you recorded in the previous procedure. Be sure to change the role ARN and **avoid any alignment** issues.
+      2. Open the aws-auth-cm.yaml file in the left panel of your Cloud9 IDE.
+      3. Copy the existing `groups` node and paste it as an additional tag.
+      4. Set the `rolearn` of the newly added group to the value that you recorded in the previous procedure. Be sure to change the role ARN and **avoid any alignment** issues.
 
-![aws-auth-file](/assets/authyaml.jpeg)
+      ![aws-auth-file](/assets/authyaml.jpeg)
 
-5. Verify that both groups have the same **alignment** and **save** the file before proceeding to the next step.
-6. Apply the configuration using the appropriate command. This process may take a few minutes to complete.
+      5. Verify that both groups have the same **alignment** and **save** the file before proceeding to the next step.
+      6. Apply the configuration using the appropriate command. This process may take a few minutes to complete.
 
-```bash
- kubectl apply -f aws-auth-cm.yaml
-```
+      ```bash
+      kubectl apply -f aws-auth-cm.yaml
+      ```
 
- ![auth](/assets/join-self-managed.jpeg) 
+      ![auth](/assets/join-self-managed.jpeg) 
 
-7. Watch the status of your nodes and wait for them to reach the Ready status.
+      7. Watch the status of your nodes and wait for them to reach the Ready status.
 
-```bash
- kubectl get nodes --watch
-```
+      ```bash
+      kubectl get nodes --watch
+      ```
 
-> To stop monitoring the status of nodes in a Kubernetes cluster using the "watch" command, you can press "Ctrl + C" when you observe that new node is in the "Ready" state. This will terminate the command and exit the watch mode.
+      > To stop monitoring the status of nodes in a Kubernetes cluster using the "watch" command, you can press "Ctrl + C" when you observe that new node is in the "Ready" state. This will terminate the command and exit the watch mode.
 
-![auth2](/assets/joined-self-managed.jpeg) 
+      ![auth2](/assets/joined-self-managed.jpeg) 
 
->**Warning**
-> If you receive any authorization or resource type errors, see [Unauthorized or access denied (kubectl)](https://docs.amazonaws.cn/en_us/eks/latest/userguide/troubleshooting.html#unauthorized) and [further references](https://docs.amazonaws.cn/en_us/eks/latest/userguide/eks-outposts-self-managed-nodes.html) in the troubleshooting topic.
+      >**Warning**
+      > If you receive any authorization or resource type errors, see [Unauthorized or access denied (kubectl)](https://docs.amazonaws.cn/en_us/eks/latest/userguide/troubleshooting.html#unauthorized) and [further references](https://docs.amazonaws.cn/en_us/eks/latest/userguide/eks-outposts-self-managed-nodes.html) in the troubleshooting topic.
 
 #### Step 3: Installing the AWS Load Balancer Controller add-on
 
